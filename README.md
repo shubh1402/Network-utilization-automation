@@ -1,6 +1,6 @@
 # Network Utilization Automation
 
-Python-based infrastructure automation platform for collecting monitoring metrics and generating automated utilization reports.
+Infrastructure automation tool for collecting monitoring metrics, validating utilization thresholds, and generating automated operational reports.
 
 ## Features
 
@@ -17,6 +17,18 @@ Python-based infrastructure automation platform for collecting monitoring metric
 - Selenium
 - OpenPyXL
 - Automation
+
+## Architecture
+
+input
+↓
+data collection
+↓
+validation
+↓
+report generation
+↓
+excel / output
 
 ## Setup
 
