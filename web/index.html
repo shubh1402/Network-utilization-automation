@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Network Utilization</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📶</text></svg>">
+  <link rel="stylesheet" href="styles.css">
+  <script src="vendor/chart.umd.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <h1>Network utilization</h1>
+      <div class="source" id="source-info"></div>
+    </div>
+    <form class="run-controls" id="run-form" autocomplete="off">
+      <label class="field">
+        <span>Report period</span>
+        <select id="period-mode">
+          <option value="yesterday">Yesterday</option>
+          <option value="today">Today so far</option>
+          <option value="date">A specific day</option>
+          <option value="range">A date range</option>
+        </select>
+      </label>
+      <label class="field" id="field-from" hidden>
+        <span id="label-from">Day</span>
+        <input type="date" id="date-from">
+      </label>
+      <label class="field" id="field-to" hidden>
+        <span>To</span>
+        <input type="date" id="date-to">
+      </label>
+      <button type="submit" class="btn btn-run" id="run-button">Run report</button>
+    </form>
+  </header>
+
+  <main>
+    <p class="notice" id="notice" hidden></p>
+
+    <section class="verdict" id="verdict" aria-live="polite">
+      <p class="period" id="period-text"></p>
+      <h2 id="headline">Loading the latest report…</h2>
+      <p class="facts" id="facts"></p>
+    </section>
+
+    <section class="strip-panel" aria-labelledby="strip-title">
+      <div class="panel-head">
+        <h3 id="strip-title">Utilization through the day</h3>
+        <ul class="legend" aria-label="Colour key">
+          <li><i class="sw sw-low"></i>Below 70%</li>
+          <li><i class="sw sw-70"></i>Above 70%</li>
+          <li><i class="sw sw-80"></i>Above 80%</li>
+          <li><i class="sw sw-90"></i>Above 90%</li>
+          <li><i class="sw sw-gap"></i>No samples</li>
+        </ul>
+      </div>
+      <div class="strip" id="strip">
+        <div class="strip-axis" id="strip-axis" aria-hidden="true"></div>
+        <div id="strip-rows"></div>
+      </div>
+      <div class="tooltip" id="tooltip" role="status" hidden></div>
+    </section>
+
+    <div class="columns">
+      <section class="detail" aria-labelledby="detail-title">
+        <div class="panel-head">
+          <h3 id="detail-title">Site detail</h3>
+          <div class="link-key">
+            <span class="key key-primary">Primary link</span>
+            <span class="key key-secondary">Secondary link</span>
+          </div>
+        </div>
+        <div class="stat-row" id="detail-stats"></div>
+        <div class="chart-wrap"><canvas id="trace" aria-label="Utilization chart for the selected site" role="img"></canvas></div>
+        <h4>Breach periods above 70%</h4>
+        <div class="table-scroll">
+          <table class="data" id="episodes">
+            <thead><tr><th>Link</th><th>From</th><th>To</th><th class="num">Minutes above 70%</th><th class="num">Peak</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <aside class="pipeline" aria-labelledby="pipeline-title">
+        <div class="panel-head">
+          <h3 id="pipeline-title">Pipeline</h3>
+          <span class="run-meta" id="run-meta"></span>
+        </div>
+        <ol class="stages" id="stages"></ol>
+        <details class="log">
+          <summary>Run log</summary>
+          <pre id="log"></pre>
+        </details>
+        <h4>Accuracy checks</h4>
+        <ul class="checks" id="checks"></ul>
+      </aside>
+    </div>
+
+    <section class="outputs" aria-labelledby="outputs-title">
+      <div class="panel-head">
+        <h3 id="outputs-title">Report files</h3>
+        <div class="downloads" id="downloads"></div>
+      </div>
+      <div class="message-wrap">
+        <div class="message-head">
+          <h4>Team message</h4>
+          <button type="button" class="btn btn-quiet" id="copy-message">Copy message</button>
+        </div>
+        <pre class="message" id="message"></pre>
+      </div>
+    </section>
+
+    <section class="history" aria-labelledby="history-title">
+      <div class="panel-head"><h3 id="history-title">Recent runs</h3></div>
+      <div class="table-scroll">
+        <table class="data" id="history">
+          <thead><tr><th>Started</th><th>Period</th><th>Source</th><th>Result</th><th class="num">Sites above 70%</th><th class="num">Checks</th><th class="num">Took</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <span>Network Utilization Automation</span>
+    <a href="https://github.com/shubh1402/Network-utilization-automation">Source on GitHub</a>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
