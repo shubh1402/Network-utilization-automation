@@ -1,0 +1,25 @@
+# secrets and real inventory
+.env
+config/sites.local.json
+
+# generated
+output/
+input/logs/*
+!input/logs/.gitkeep
+input/screenshots/*
+!input/screenshots/.gitkeep
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

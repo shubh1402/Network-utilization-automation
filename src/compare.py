@@ -1,35 +1,18 @@
 from __future__ import annotations
 
-import re
-from collections import defaultdict
-from datetime import datetime
+import argparse
+import sys
 from pathlib import Path
 
-from src.config import ZABBIX_API_TOKEN, ZABBIX_API_URL, ZABBIX_VERIFY_SSL
+if __package__ in (None, ""):
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from src.clients.zabbix_client import ZabbixClient
-from src.sources.zabbix_source import fetch_site_records_with_stats
-from src.services.utilization_service import summarize_records
+from src.config import ZABBIX_API_TOKEN, ZABBIX_API_URL, ZABBIX_VERIFY_SSL
 from src.models.utilization_record import UtilizationRecord
-
-
-RAW_LINE_PATTERN = re.compile(
-    r"""
-    ^
-    (?P<date>\d{4}-\d{2}-\d{2})
-    \s+
-    (?P<time>\d{2}:\d{2}:\d{2})
-    \s+
-    (?P<meridian>AM|PM|am|pm)
-    \s+
-    \d+
-    \s+
-    (?P<value>\d+(?:\.\d+)?)
-    \s+
-    "(?P<label>[^"]+)"
-    $
-    """,
-    re.VERBOSE,
-)
+from src.services.utilization_service import ChannelMaps, merge_channel_maps, summarize_records
+from src.sources.txt_source import parse_log_file
+from src.sources.zabbix_source import fetch_site_records_with_stats
 
 
 def ask_file_path() -> Path:
@@ -58,100 +41,15 @@ def ask_report_date() -> str:
     return report_date
 
 
-def detect_link_and_direction(label: str) -> tuple[str | None, str | None]:
-    normalized = label.lower()
-
-    if "primary link utilization inbound" in normalized:
-        return "Primary", "Inbound"
-    if "primary link utilization outbound" in normalized:
-        return "Primary", "Outbound"
-    if "secondary link utilization inbound" in normalized:
-        return "Secondary", "Inbound"
-    if "secondary link utilization outbound" in normalized:
-        return "Secondary", "Outbound"
-
-    return None, None
-
-
-def parse_raw_txt_to_channel_maps(
-    file_path: Path,
-) -> dict[tuple[str, str], dict[int, float]]:
-    """
-    Returns:
-        {
-            ("Primary", "Inbound"): {minute_clock: value, ...},
-            ("Primary", "Outbound"): {...},
-            ("Secondary", "Inbound"): {...},
-            ("Secondary", "Outbound"): {...},
-        }
-    """
-    channel_maps: dict[tuple[str, str], dict[int, float]] = defaultdict(dict)
-
-    with file_path.open("r", encoding="utf-8", errors="replace") as file:
-        for line_number, line in enumerate(file, start=1):
-            raw_line = line.strip()
-            if not raw_line:
-                continue
-
-            if raw_line.endswith(" items") and ":" in raw_line and '"' not in raw_line:
-                continue
-
-            match = RAW_LINE_PATTERN.match(raw_line)
-            if not match:
-                continue
-
-            label = match.group("label")
-            link_type, direction = detect_link_and_direction(label)
-            if not link_type or not direction:
-                continue
-
-            dt_str = (
-                f"{match.group('date')} "
-                f"{match.group('time')} "
-                f"{match.group('meridian').upper()}"
-            )
-            timestamp = datetime.strptime(dt_str, "%Y-%m-%d %I:%M:%S %p")
-            value = float(match.group("value"))
-
-            minute_clock = int(timestamp.timestamp()) - (int(timestamp.timestamp()) % 60)
-
-            key = (link_type, direction)
-            if minute_clock in channel_maps[key]:
-                channel_maps[key][minute_clock] = max(channel_maps[key][minute_clock], value)
-            else:
-                channel_maps[key][minute_clock] = value
-
+def parse_raw_txt_to_channel_maps(file_path: Path) -> ChannelMaps:
+    """{(link, direction): {minute: value}} from one raw export (shared parser)."""
+    channel_maps: ChannelMaps = {}
+    parse_log_file(file_path, channel_maps)
     return channel_maps
 
 
-def merge_channel_maps_to_records(
-    site_name: str,
-    channel_maps: dict[tuple[str, str], dict[int, float]],
-) -> list[UtilizationRecord]:
-    records: list[UtilizationRecord] = []
-
-    for link_type in ("Primary", "Secondary"):
-        inbound_map = channel_maps.get((link_type, "Inbound"), {})
-        outbound_map = channel_maps.get((link_type, "Outbound"), {})
-
-        all_minutes = sorted(set(inbound_map.keys()) | set(outbound_map.keys()))
-
-        for minute_clock in all_minutes:
-            in_value = inbound_map.get(minute_clock, 0.0)
-            out_value = outbound_map.get(minute_clock, 0.0)
-            merged_value = max(in_value, out_value)
-
-            records.append(
-                UtilizationRecord(
-                    site=site_name,
-                    link_type=link_type,
-                    timestamp=datetime.fromtimestamp(minute_clock),
-                    value=merged_value,
-                    source_file=None,
-                )
-            )
-
-    return records
+def merge_channel_maps_to_records(site_name: str, channel_maps: ChannelMaps) -> list[UtilizationRecord]:
+    return merge_channel_maps(site_name, channel_maps)
 
 
 def build_summary_from_records(records: list[UtilizationRecord]) -> dict:
@@ -200,6 +98,18 @@ def fetch_zabbix_counts(site_name: str, report_date: str) -> dict[str, dict[str,
     return extract_site_counts(site_data, site_name)
 
 
+def fetch_demo_counts(site_name: str, report_date: str) -> dict[str, dict[str, int]]:
+    from datetime import datetime as _dt
+
+    from src.config import SITES_BY_NAME
+    from src.sources.demo_source import fetch_demo_records_with_stats
+    from src.utils.date_utils import parse_date
+
+    day = parse_date(report_date)
+    records, _ = fetch_demo_records_with_stats(day, day, now=_dt.max, sites=[SITES_BY_NAME[site_name]])
+    return extract_site_counts(summarize_records(records), site_name)
+
+
 def compare_counts(
     txt_counts: dict[str, dict[str, int]],
     zabbix_counts: dict[str, dict[str, int]],
@@ -245,6 +155,10 @@ def print_counts(title: str, counts: dict[str, dict[str, int]]) -> None:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Reconcile a raw TXT export against Zabbix")
+    parser.add_argument("--demo", action="store_true", help="compare against the demo simulator instead of Zabbix")
+    args = parser.parse_args()
+
     txt_file = ask_file_path()
     site_name = ask_site_name()
     report_date = ask_report_date()
@@ -254,10 +168,10 @@ def main() -> None:
     txt_site_data = build_summary_from_records(txt_records)
     txt_counts = extract_site_counts(txt_site_data, site_name)
 
-    zabbix_counts = fetch_zabbix_counts(site_name, report_date)
+    zabbix_counts = fetch_demo_counts(site_name, report_date) if args.demo else fetch_zabbix_counts(site_name, report_date)
 
     print_counts("RAW TXT DERIVED COUNTS", txt_counts)
-    print_counts("ZABBIX DERIVED COUNTS", zabbix_counts)
+    print_counts("DEMO DERIVED COUNTS" if args.demo else "ZABBIX DERIVED COUNTS", zabbix_counts)
 
     compare_counts(txt_counts, zabbix_counts, site_name)
 

@@ -1,0 +1,61 @@
+{
+  "_comment": "One entry per monitored site. zabbix_host must match the host name in Zabbix. capacity_mbps is only used when Zabbix items report bps instead of %. fortigate_key maps to FORTIGATE_<KEY>_URL/USERNAME/PASSWORD in .env. 'demo' shapes the simulated traffic used when DATA_SOURCE=demo. Keep your real site list in config/sites.local.json (git-ignored) and set SITES_FILE to it.",
+  "sites": [
+    {
+      "name": "Pune",
+      "zabbix_host": "PUN-FW01",
+      "timezone": "Asia/Kolkata",
+      "capacity_mbps": {"Primary": 500, "Secondary": 100},
+      "fortigate_key": "PUNE",
+      "demo": {"base": 12, "peak": 74, "noise": 3.0, "bursts": 5, "backup": 0}
+    },
+    {
+      "name": "Mumbai",
+      "zabbix_host": "BOM-FW01",
+      "timezone": "Asia/Kolkata",
+      "capacity_mbps": {"Primary": 1000, "Secondary": 200},
+      "fortigate_key": "MUMBAI",
+      "demo": {"base": 10, "peak": 52, "noise": 2.5, "bursts": 3, "backup": 28}
+    },
+    {
+      "name": "Hyderabad",
+      "zabbix_host": "HYD-FW01",
+      "timezone": "Asia/Kolkata",
+      "capacity_mbps": {"Primary": 500, "Secondary": 100},
+      "fortigate_key": "HYDERABAD",
+      "demo": {"base": 18, "peak": 84, "noise": 3.5, "bursts": 6, "backup": 0}
+    },
+    {
+      "name": "Frankfurt",
+      "zabbix_host": "FRA-FW01",
+      "timezone": "Europe/Berlin",
+      "capacity_mbps": {"Primary": 500, "Secondary": 100},
+      "fortigate_key": "FRANKFURT",
+      "demo": {"base": 9, "peak": 62, "noise": 2.5, "bursts": 4, "backup": 35}
+    },
+    {
+      "name": "Lyon",
+      "zabbix_host": "LYS-FW01",
+      "timezone": "Europe/Paris",
+      "capacity_mbps": {"Primary": 300, "Secondary": 50},
+      "fortigate_key": "LYON",
+      "demo": {"base": 6, "peak": 38, "noise": 2.0, "bursts": 2, "backup": 0, "gap_chance": 0.5}
+    },
+    {
+      "name": "Singapore",
+      "zabbix_host": "SIN-FW01",
+      "timezone": "Asia/Singapore",
+      "capacity_mbps": {"Primary": 300, "Secondary": 100},
+      "fortigate_key": "SINGAPORE",
+      "demo": {"base": 8, "peak": 46, "noise": 2.5, "bursts": 3, "backup": 0, "failover_chance": 0.6}
+    },
+    {
+      "name": "Austin",
+      "zabbix_host": "AUS-FW01",
+      "timezone": "America/Chicago",
+      "capacity_mbps": {"Primary": 1000, "Secondary": 200},
+      "fortigate_key": "AUSTIN",
+      "demo": {"base": 7, "peak": 41, "noise": 2.0, "bursts": 2, "backup": 22}
+    }
+  ]
+}
